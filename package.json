@@ -1,0 +1,9 @@
+{ 
+	"name": "js-gol", 
+	"version": "0.0.1", 
+	"description": "Simulates Conway's Game of Life based cellular automata", 
+	"author": "kazitor", 
+	"dependencies": { 
+		"jquery": "^3.3.1" 
+	} 
+} 
