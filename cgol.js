@@ -9,9 +9,9 @@ $(document).ready(function() {
     ctx = extendContext(ctx);
 
     // create a blinker
-    data[3][5]=1;
-    data[4][5]=1;
-    data[5][5]=1;
+    data[3][5]=2;
+    data[4][5]=2;
+    data[5][5]=2;
     ctx.drawData(data);
   }
 
@@ -47,8 +47,9 @@ function initData(x, y) {
   return data;
 }
 
-function stepData(data, loop) {
+function stepData(data, rule, loop) {
   if(loop===undefined) loop=true;
+  if(rule===undefined) rule=getRule();
 
   var w = data.length;
   var h = data[0].length;
@@ -57,27 +58,33 @@ function stepData(data, loop) {
   for(var x = 0; x < w; x++) {
     ret[x] = Array(h);
     for(var y = 0; y < h; y++) {
-      // count surrounding live cells
-      var c = 0;
-      for(var i = x-1; i <= x+1; i++) {
-        var iclamp = (i+w)%w;
-        for(var j = y-1; j <= y+1; j++) {
-          if(i==x && j==y)
-            continue; // don't count current cell
+      if(data[x][y] == rule.C - 1 || data[x][y] == 0) {
+        // if alive or dead
+        // count surrounding live cells
+        var c = 0;
+        for(var i = x-1; i <= x+1; i++) {
+          var iclamp = (i+w)%w;
+          for(var j = y-1; j <= y+1; j++) {
+            if(i==x && j==y)
+              continue; // don't count current cell
 
-          var jclamp = (j+h)%h;
-          if(!loop && (i!=iclamp || j!=jclamp))
-            continue; // don't count looped cells
+            var jclamp = (j+h)%h;
+            if(!loop && (i!=iclamp || j!=jclamp))
+              continue; // don't count looped cells
 
-          if(data[iclamp][jclamp])
-            c++;
+            if(data[iclamp][jclamp] == rule.C - 1)
+              c++;
+          }
         }
-      }
 
-      if(data[x][y]) { // cells that are alive:
-        ret[x][y] = (c==2 || c==3) ? 1 : 0;
-      } else { // cells that are dead:
-        ret[x][y] = (c==3) ? 1 : 0;
+        if(data[x][y]) { // cells that are alive:
+          ret[x][y] = rule.C - (arrContains(rule.S, c) ? 1 : 2);
+        } else { // cells that are dead:
+          ret[x][y] = (arrContains(rule.B, c)) ? rule.C-1 : 0;
+        }
+      } else {
+        // cell is dying
+        ret[x][y] = data[x][y] - 1;
       }
     }
   }
@@ -99,7 +106,8 @@ function doMouse(e) {
   var y=coord(e.offsetY);
   if(e.buttons & 1) {  // left mouse is down
     if(mousemode===null) {
-      mousemode = 1 - data[x][y];
+      mousemode = data[x][y] - 1;
+      if(mousemode==-1) mousemode = getRule().C - 1;
     }
 
     data[x][y] = mousemode;
@@ -114,7 +122,9 @@ function doMouse(e) {
 function extendContext(ctx) {
   // add functionality to a canvas context
   if(!ctx.drawCell) {
-    ctx.drawCell = function (x,y) {
+    ctx.drawCell = function (x,y,shade) {
+      shade = Math.round(255 - shade * 255);
+      this.fillStyle = 'rgb('+shade+','+shade+','+shade+')';
       this.fillRect(50*x + 5, 50*y + 5, 40, 40);
     }
   }
@@ -122,15 +132,44 @@ function extendContext(ctx) {
   if(!ctx.drawData) {
     ctx.drawData = function (data) {
       this.clearRect(0,0,500,500);
+      var C = getRule().C;
+
       for(x=data.length - 1; x >= 0; x--) {
         var col=data[x];
         for(y=col.length - 1; y >= 0; y--)
           if(data[x][y])
-            this.drawCell(x,y);
+            this.drawCell(x,y, data[x][y]/(C-1));
       }
       this.fillRect(50*x + 5, 50*y + 5, 40, 40);
     }
   }
 
   return ctx;
+}
+
+function getRule() {
+  var r = {B:[], S:[], C:null};
+  var B = $('#B').val();
+  var S = $('#S').val();
+  var C = $('#C').val();
+
+  if(C=="") C=="2";
+  r.C=parseInt(C);
+
+  for(var i = 0; i < B.length; i++)
+    r.B.push(parseInt(B[i]));
+  for(var i = 0; i < S.length; i++)
+    r.S.push(parseInt(S[i]));
+
+  return r;
+}
+
+function arrContains(a, obj) {
+// dammit IE!
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] === obj) {
+      return true;
+    }
+  }
+  return false;
 }
