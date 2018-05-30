@@ -9,9 +9,9 @@ $(document).ready(function() {
     ctx = extendContext(ctx);
 
     // create a blinker
-    data[3][5]=2;
-    data[4][5]=2;
-    data[5][5]=2;
+    data[3][5]=1;
+    data[4][5]=1;
+    data[5][5]=1;
     ctx.drawData(data);
   }
 
@@ -58,7 +58,7 @@ function stepData(data, rule, loop) {
   for(var x = 0; x < w; x++) {
     ret[x] = Array(h);
     for(var y = 0; y < h; y++) {
-      if(data[x][y] == rule.C - 1 || data[x][y] == 0) {
+      if(data[x][y] == 1 || data[x][y] == 0) {
         // if alive or dead
         // count surrounding live cells
         var c = 0;
@@ -72,19 +72,20 @@ function stepData(data, rule, loop) {
             if(!loop && (i!=iclamp || j!=jclamp))
               continue; // don't count looped cells
 
-            if(data[iclamp][jclamp] == rule.C - 1)
+            if(data[iclamp][jclamp] == 1)
               c++;
           }
         }
 
         if(data[x][y]) { // cells that are alive:
-          ret[x][y] = rule.C - (arrContains(rule.S, c) ? 1 : 2);
+          ret[x][y] = arrContains(rule.S, c) ? 1 : (rule.C > 2) ? 2 : 0;
+          //ret[x][y] = rule.C - (arrContains(rule.S, c) ? 1 : 2);
         } else { // cells that are dead:
-          ret[x][y] = (arrContains(rule.B, c)) ? rule.C-1 : 0;
+          ret[x][y] = (arrContains(rule.B, c)) ? 1 : 0;
         }
       } else {
         // cell is dying
-        ret[x][y] = data[x][y] - 1;
+        ret[x][y] = (data[x][y] == rule.C - 1) ? 0 : data[x][y] + 1;
       }
     }
   }
@@ -106,8 +107,8 @@ function doMouse(e) {
   var y=coord(e.offsetY);
   if(e.buttons & 1) {  // left mouse is down
     if(mousemode===null) {
-      mousemode = data[x][y] - 1;
-      if(mousemode==-1) mousemode = getRule().C - 1;
+      mousemode = data[x][y] + 1;
+      if(mousemode == getRule().C) mousemode = 0;
     }
 
     data[x][y] = mousemode;
@@ -123,7 +124,7 @@ function extendContext(ctx) {
   // add functionality to a canvas context
   if(!ctx.drawCell) {
     ctx.drawCell = function (x,y,shade) {
-      shade = Math.round(255 - shade * 255);
+      shade = Math.round(shade * 255);
       this.fillStyle = 'rgb('+shade+','+shade+','+shade+')';
       this.fillRect(50*x + 5, 50*y + 5, 40, 40);
     }
@@ -138,9 +139,9 @@ function extendContext(ctx) {
         var col=data[x];
         for(y=col.length - 1; y >= 0; y--)
           if(data[x][y])
-            this.drawCell(x,y, data[x][y]/(C-1));
+            this.drawCell(x,y, (data[x][y]-1)/(C-1));
       }
-      this.fillRect(50*x + 5, 50*y + 5, 40, 40);
+      //this.fillRect(50*x + 5, 50*y + 5, 40, 40);
     }
   }
 
@@ -153,7 +154,7 @@ function getRule() {
   var S = $('#S').val();
   var C = $('#C').val();
 
-  if(C=="") C=="2";
+  if(C=="") C="2";
   r.C=parseInt(C);
 
   for(var i = 0; i < B.length; i++)
